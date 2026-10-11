@@ -2,9 +2,13 @@
  * Prefilled into the textarea so the page has something to search with.
  * Written as a Yangon-market web developer CV, since the seed postings are
  * Myanmar roles — a US frontend resume would match almost nothing.
+ *
+ * Carries the site owner's real name, but the employers, dates and metrics
+ * below are invented demo content. Swap them for the real history before
+ * anyone could mistake this page for an actual CV.
  */
-export const SAMPLE_RESUME = `Kyaw Min Htet — Web Developer
-Yangon, Myanmar · kyawminhtet.dev@gmail.com · +95 9 xxx xxx xxx
+export const SAMPLE_RESUME = `Hlaing Min Kyaw — Web Developer
+Yangon, Myanmar · hmkportfolio.vercel.app
 3 years building business systems for local companies.
 
 EXPERIENCE

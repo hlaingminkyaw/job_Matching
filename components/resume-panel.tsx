@@ -29,7 +29,7 @@ export function ResumePanel({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-line bg-panel p-4 sm:p-5"
+      className="rounded-2xl border border-line bg-panel p-4 shadow-[0_1px_0_rgb(255_255_255/0.04)_inset,0_20px_50px_-30px_rgb(0_0_0/0.9)] backdrop-blur-xl sm:p-5"
       aria-busy={isLoading}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -63,7 +63,7 @@ export function ResumePanel({
         rows={10}
         spellCheck={false}
         placeholder="Paste your resume here — experience, skills, projects. Plain text is fine."
-        className="mt-3 w-full resize-y rounded-xl border border-line bg-raised px-3.5 py-3 font-mono text-[13px] leading-6 text-fg placeholder:text-muted/70 focus:border-line-strong focus:outline-none"
+        className="mt-3 w-full resize-y rounded-xl border border-line bg-raised px-3.5 py-3 font-mono text-[13px] leading-6 text-fg transition-[border-color,box-shadow] duration-200 placeholder:text-muted/70 focus:border-brand focus:shadow-[0_0_0_3px_var(--brand-ring)] focus:outline-none"
       />
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -73,7 +73,7 @@ export function ResumePanel({
         <button
           type="submit"
           disabled={isEmpty || isLoading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn-brand inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isLoading ? (
             <>

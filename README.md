@@ -233,6 +233,35 @@ Senior from explicit titles or the largest "N years" it can find.
 Tier cutoffs (`strong` at 80, `solid` at 62) sit next to the window.
 `MATCH_THRESHOLD` and `MATCH_COUNT` are at the top of the route.
 
+## Look and feel
+
+Dark-committed, Linear/Supabase-flavoured: glass surfaces over a fixed ambience
+layer (a masked grid and two blurred glow orbs), emerald→teal brand, amber for
+the middle match tier.
+
+**There is no light theme, on purpose.** Glass only reads as glass against a
+dark ground, so a light mode would be a second design rather than a recolour.
+`:root` in [`app/globals.css`](app/globals.css) sets `color-scheme: dark` and
+every colour explicitly, with no `prefers-color-scheme` block. Components still
+style through semantic tokens (`bg-panel`, `border-line`, `text-muted`), so
+reintroducing a light theme later means redefining tokens, not touching
+components.
+
+Two performance choices worth keeping:
+
+- **Cards don't use `backdrop-blur`.** Up to 20 render at once, and 20 blur
+  layers is a visible scroll cost on a mid-range phone — which is most of the
+  audience for these postings. The resume panel and drawer do blur; there's one
+  of each. A flat translucent fill is indistinguishable over this background.
+- **Orb blur drops from 110px to 70px under 640px**, and the orbs shrink. A
+  110px blur over a 34rem box is one of the most expensive things a phone GPU
+  can be asked for.
+
+The strong-tier badge pulses; solid and stretch don't. Pulsing all 20 would be
+noise rather than emphasis. The reduced-motion block sets
+`animation-iteration-count: 1` alongside the duration override — without it an
+infinite animation strobes instead of stopping.
+
 ## Notes
 
 - `lib/supabase.ts` throws if it is ever called in the browser. The service role

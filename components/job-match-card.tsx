@@ -18,7 +18,10 @@ export function JobMatchCard({ match, onOpen }: JobMatchCardProps) {
   );
 
   return (
-    <article className="group relative cursor-pointer rounded-xl border border-line bg-raised p-5 transition-colors hover:border-line-strong has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-fg sm:p-6">
+    // No backdrop-blur here on purpose: up to 20 of these render at once, and
+    // 20 blur layers is a visible scroll cost on a mid-range phone. A flat
+    // translucent fill is indistinguishable over this background.
+    <article className="group relative cursor-pointer rounded-xl border border-line bg-raised p-5 transition-[border-color,box-shadow] duration-200 hover:border-line-brand hover:shadow-[0_0_0_1px_var(--brand-ring),0_18px_40px_-24px_var(--brand-glow)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
           <h3 className="text-[17px] font-semibold tracking-[-0.011em]">

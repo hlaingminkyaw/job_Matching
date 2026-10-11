@@ -1,60 +1,61 @@
 @import "tailwindcss";
 
-/* One centered column: resume panel above a ranked list of result cards. */
+/*
+ * Dark-committed. Glass surfaces over a glow field only read as glass against
+ * a dark ground — a light theme would be a different design, not a recolor —
+ * so there is deliberately no prefers-color-scheme block here. Every colour is
+ * set explicitly so the page looks right whatever ground the browser paints.
+ *
+ * Layout: one centred column over a fixed ambience layer (grid + glow orbs).
+ */
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --bg: #ffffff;
-  --panel: #fafafa;
-  --raised: #ffffff;
-  --line: #e8e8ea;
-  --line-strong: #d4d4d8;
-  --fg: #0a0a0a;
-  --muted: #6c6f76;
-  --accent: #0a0a0a;
-  --accent-fg: #ffffff;
+  --bg: #08090a;
 
-  --strong: #0c7a53;
-  --strong-soft: #e7f4ee;
-  --solid: #9a6412;
-  --solid-soft: #fbf2e2;
-  --stretch: #6c6f76;
-  --stretch-soft: #f2f2f4;
-}
+  /* Glass fills. Kept as white alphas so they pick up whatever is behind. */
+  --surface: rgb(255 255 255 / 0.035);
+  --surface-strong: rgb(255 255 255 / 0.055);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
+  --line: rgb(255 255 255 / 0.09);
+  --line-strong: rgb(255 255 255 / 0.17);
+  --line-brand: rgb(52 211 153 / 0.38);
 
-    --bg: #09090a;
-    --panel: #0f0f11;
-    --raised: #121215;
-    --line: #232327;
-    --line-strong: #35353c;
-    --fg: #f4f4f5;
-    --muted: #9b9ba4;
-    --accent: #fafafa;
-    --accent-fg: #0a0a0a;
+  --fg: #ededf0;
+  --muted: #8b8b95;
 
-    --strong: #45d49a;
-    --strong-soft: #0f2a21;
-    --solid: #e0b341;
-    --solid-soft: #2a2211;
-    --stretch: #9b9ba4;
-    --stretch-soft: #1a1a1e;
-  }
+  --brand: #34d399;
+  --brand-2: #2dd4bf;
+  --brand-fg: #04211a;
+  --brand-ring: rgb(52 211 153 / 0.3);
+  --brand-glow: rgb(45 212 191 / 0.4);
+
+  /* Match tiers. Green reads as "good" here and shares the brand hue. */
+  --strong: #34d399;
+  --strong-soft: rgb(52 211 153 / 0.13);
+  --solid: #fbbf24;
+  --solid-soft: rgb(251 191 36 / 0.12);
+  --stretch: #a1a1aa;
+  --stretch-soft: rgb(255 255 255 / 0.06);
+
+  --grid: rgb(255 255 255 / 0.04);
 }
 
 @theme inline {
   --color-bg: var(--bg);
-  --color-panel: var(--panel);
-  --color-raised: var(--raised);
+  --color-panel: var(--surface);
+  --color-raised: var(--surface-strong);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+  --color-line-brand: var(--line-brand);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
-  --color-accent: var(--accent);
-  --color-accent-fg: var(--accent-fg);
+
+  /* `accent` is the brand green; the CTA uses the .btn-brand gradient. */
+  --color-accent: var(--brand);
+  --color-accent-fg: var(--brand-fg);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
 
   --color-strong: var(--strong);
   --color-strong-soft: var(--strong-soft);
@@ -67,17 +68,134 @@
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
 }
 
+body {
+  /* A faint wash at the top so the ground isn't flat black. */
+  background:
+    radial-gradient(ellipse 110% 55% at 50% -10%, rgb(16 185 129 / 0.07), transparent 62%),
+    var(--bg);
+}
+
 ::selection {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--brand);
+  color: var(--brand-fg);
 }
 
 *:focus-visible {
-  outline: 2px solid var(--fg);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
-/* Job detail drawer: pinned to the right edge, full-screen on phones. */
+/* ---------- ambience: fixed grid + glow orbs, behind everything ---------- */
+
+.ambience {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden; /* keeps the off-canvas orbs from widening the page */
+  pointer-events: none;
+}
+
+.ambience::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 56px 56px;
+  /* Fades the grid out below the hero so it never fights the result list. */
+  -webkit-mask-image: radial-gradient(ellipse 85% 55% at 50% 0%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 55% at 50% 0%, #000 35%, transparent 100%);
+}
+
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(110px);
+  opacity: 0.2;
+}
+
+.orb-a {
+  width: 34rem;
+  height: 34rem;
+  top: -13rem;
+  left: -9rem;
+  background: radial-gradient(circle, var(--brand) 0%, transparent 70%);
+}
+
+.orb-b {
+  width: 30rem;
+  height: 30rem;
+  top: -7rem;
+  right: -11rem;
+  background: radial-gradient(circle, #6366f1 0%, transparent 70%);
+}
+
+/* A 110px blur over a 34rem box is costly on phones — shrink it there. */
+@media (max-width: 640px) {
+  .orb {
+    filter: blur(70px);
+    opacity: 0.16;
+  }
+  .orb-a {
+    width: 20rem;
+    height: 20rem;
+    top: -8rem;
+    left: -6rem;
+  }
+  .orb-b {
+    width: 18rem;
+    height: 18rem;
+    top: -5rem;
+    right: -7rem;
+  }
+}
+
+/* ---------- brand CTA ---------- */
+
+.btn-brand {
+  background-image: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);
+  color: var(--brand-fg);
+  /* Top sheen + ambient drop, so it reads as lit rather than filled. */
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    0 1px 2px rgb(0 0 0 / 0.4);
+  transition:
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+.btn-brand:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 0 0 1px var(--brand-ring),
+    0 10px 28px -10px var(--brand-glow);
+}
+
+.btn-brand:disabled {
+  filter: saturate(0.4);
+  box-shadow: none;
+}
+
+/* ---------- score badge ---------- */
+
+.badge-pulse {
+  animation: badge-pulse 2.8s ease-out infinite;
+}
+
+@keyframes badge-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(52 211 153 / 0.5);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 5px rgb(52 211 153 / 0);
+  }
+}
+
+/* ---------- job detail drawer ---------- */
+
 .drawer {
   position: fixed;
   inset: 0 0 0 auto;
@@ -88,10 +206,11 @@
   height: 100dvh;
   max-height: 100dvh;
   border: none;
-  border-left: 1px solid var(--line);
-  background: var(--bg);
+  border-left: 1px solid var(--line-strong);
+  background: #0b0c0e;
   color: var(--fg);
   overflow: hidden;
+  box-shadow: -24px 0 60px -20px rgb(0 0 0 / 0.7);
   transform: translateX(100%);
   transition:
     transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -108,7 +227,8 @@
 }
 
 .drawer::backdrop {
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(2px);
   opacity: 0;
   transition:
     opacity 260ms ease,
@@ -135,6 +255,8 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Without this, an infinite animation strobes instead of stopping. */
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
