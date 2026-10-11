@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+/* One centered column: resume panel above a ranked list of result cards. */
+:root {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --panel: #fafafa;
+  --raised: #ffffff;
+  --line: #e8e8ea;
+  --line-strong: #d4d4d8;
+  --fg: #0a0a0a;
+  --muted: #6c6f76;
+  --accent: #0a0a0a;
+  --accent-fg: #ffffff;
+
+  --strong: #0c7a53;
+  --strong-soft: #e7f4ee;
+  --solid: #9a6412;
+  --solid-soft: #fbf2e2;
+  --stretch: #6c6f76;
+  --stretch-soft: #f2f2f4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #09090a;
+    --panel: #0f0f11;
+    --raised: #121215;
+    --line: #232327;
+    --line-strong: #35353c;
+    --fg: #f4f4f5;
+    --muted: #9b9ba4;
+    --accent: #fafafa;
+    --accent-fg: #0a0a0a;
+
+    --strong: #45d49a;
+    --strong-soft: #0f2a21;
+    --solid: #e0b341;
+    --solid-soft: #2a2211;
+    --stretch: #9b9ba4;
+    --stretch-soft: #1a1a1e;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+
+  --color-strong: var(--strong);
+  --color-strong-soft: var(--strong-soft);
+  --color-solid: var(--solid);
+  --color-solid-soft: var(--solid-soft);
+  --color-stretch: var(--stretch);
+  --color-stretch-soft: var(--stretch-soft);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+}
+
+::selection {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+/* Job detail drawer: pinned to the right edge, full-screen on phones. */
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  padding: 0;
+  width: min(34rem, 100%);
+  max-width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border: none;
+  border-left: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+  transform: translateX(100%);
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    overlay 260ms allow-discrete,
+    display 260ms allow-discrete;
+}
+
+.drawer:focus {
+  outline: none;
+}
+
+.drawer[open] {
+  transform: translateX(0);
+}
+
+.drawer::backdrop {
+  background: rgb(0 0 0 / 0.45);
+  opacity: 0;
+  transition:
+    opacity 260ms ease,
+    overlay 260ms allow-discrete,
+    display 260ms allow-discrete;
+}
+
+.drawer[open]::backdrop {
+  opacity: 1;
+}
+
+/* Entry transition. Browsers without @starting-style just skip the animation. */
+@starting-style {
+  .drawer[open] {
+    transform: translateX(100%);
+  }
+  .drawer[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
