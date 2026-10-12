@@ -250,6 +250,68 @@ body {
   }
 }
 
+/* ---------- centred modal (Telegram alerts) ---------- */
+
+/*
+ * A short form, not a document — so it sits in the middle rather than sliding
+ * in as a full-height drawer. Same open/close mechanics as .drawer: it is a
+ * <dialog> opened with showModal(), which is where Esc, the focus trap and
+ * making the page behind it inert come from.
+ */
+.modal {
+  position: fixed;
+  margin: auto;
+  padding: 0;
+  width: min(30rem, calc(100% - 2rem));
+  max-height: min(85dvh, 44rem);
+  border: 1px solid var(--line-strong);
+  border-radius: 1rem;
+  background: #0b0c0e;
+  color: var(--fg);
+  overflow: hidden;
+  box-shadow: 0 24px 70px -20px rgb(0 0 0 / 0.8);
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  transition:
+    opacity 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    overlay 200ms allow-discrete,
+    display 200ms allow-discrete;
+}
+
+.modal:focus {
+  outline: none;
+}
+
+.modal[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.modal::backdrop {
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition:
+    opacity 200ms ease,
+    overlay 200ms allow-discrete,
+    display 200ms allow-discrete;
+}
+
+.modal[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .modal[open] {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  .modal[open]::backdrop {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

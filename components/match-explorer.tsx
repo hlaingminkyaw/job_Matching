@@ -7,6 +7,7 @@ import { JobDetailModal } from "./job-detail-modal";
 import { JobMatchCard } from "./job-match-card";
 import { ResumePanel } from "./resume-panel";
 import { ResultSkeleton } from "./result-skeleton";
+import { TelegramAlertCard } from "./telegram-alert-modal";
 
 type Status = "idle" | "loading" | "done" | "error";
 
@@ -150,6 +151,11 @@ export function MatchExplorer() {
           </Notice>
         )}
       </section>
+
+      {/* Offered once there are results to judge it by: today's ranking is the
+          argument for wanting tomorrow's, and before a search there is nothing
+          to tell someone what they would be subscribing to. */}
+      {status === "done" && results.length > 0 && <TelegramAlertCard resume={resume} />}
 
       <JobDetailModal match={selected} onClose={closeDetail} />
     </div>

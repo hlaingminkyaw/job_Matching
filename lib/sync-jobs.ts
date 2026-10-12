@@ -10,6 +10,7 @@
  */
 
 import { EMBED_CHUNK_SIZE, EMBEDDING_MODEL, embedAll } from "./embeddings.ts";
+import { dispatchJobAlerts, type AlertDispatchResult } from "./job-alerts.ts";
 import { jobEmbeddingInput, type Job } from "./jobs.ts";
 import { getSupabaseAdmin } from "./supabase.ts";
 import { fetchJobs } from "./techcareer.ts";
@@ -36,6 +37,8 @@ export type SyncResult = {
   withEmail: number;
   durationMs: number;
   model: string;
+  /** Telegram fan-out. Absent when it was skipped or failed. */
+  alerts?: AlertDispatchResult;
 };
 
 export const SYNC_DEFAULTS = { limit: 40, pages: 5 } as const;
@@ -91,6 +94,29 @@ export async function syncJobs(options: SyncOptions = {}): Promise<SyncResult> {
     log(`  … ${upserted}/${rows.length}`);
   }
 
+  // 4. Telegram alerts, after the rows exist — job_alert_sends references
+  //    jobs.id, so dispatching before the upsert would fail on the foreign key.
+  //
+  //    Isolated from the sync's own outcome on purpose: the rows are already
+  //    written by this point, and the site works whether or not a notification
+  //    went out. Failing the whole run over a Telegram outage would also mean
+  //    GitHub Actions reports a red build for a sync that did its job.
+  let alerts: AlertDispatchResult | undefined;
+  try {
+    log("Dispatching Telegram alerts…");
+    alerts = await dispatchJobAlerts(jobs, vectors, log);
+    if (alerts.subscribers) {
+      log(
+        `  ✓ ${alerts.sent} sent to ${alerts.subscribers} subscribers` +
+          `${alerts.failed ? `, ${alerts.failed} failed` : ""}` +
+          `${alerts.deactivated ? `, ${alerts.deactivated} deactivated` : ""}`,
+      );
+    }
+  } catch (error) {
+    console.error("[sync] alert dispatch failed:", error);
+    log(`  ! alerts failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
   return {
     ok: true,
     fetched: jobs.length,
@@ -99,6 +125,7 @@ export async function syncJobs(options: SyncOptions = {}): Promise<SyncResult> {
     withEmail: jobs.filter((job) => job.email).length,
     durationMs: Date.now() - startedAt,
     model: EMBEDDING_MODEL,
+    alerts,
   };
 }
 
