@@ -1,4 +1,6 @@
-import { JOBS, type Job, type JobLevel } from "./jobs";
+// Explicit .ts so plain `node` can import this module too — scripts/ reuses
+// ALIASES, and Node won't resolve an extensionless path the way the bundler does.
+import { JOBS, type Job, type JobLevel } from "./jobs.ts";
 
 export type MatchTier = "strong" | "solid" | "stretch";
 
@@ -19,7 +21,7 @@ export type JobMatch = {
  * close they are; this decides what to tell the user about each one, since
  * "0.72 cosine similarity" is not a reason anybody can act on.
  */
-const ALIASES: Record<string, string[]> = {
+export const ALIASES: Record<string, string[]> = {
   React: ["reactjs", "react.js"],
   TypeScript: ["ts"],
   JavaScript: ["js", "es6", "ecmascript"],

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { relativeDay } from "@/lib/format";
-import type { Job } from "@/lib/jobs";
+import { isSearchLink, jobSourceUrl, type Job } from "@/lib/jobs";
 import type { JobMatch } from "@/lib/matching";
 import { JobDescription } from "./job-description";
 import { ScoreBadge, TIER_BAR } from "./score-badge";
@@ -33,7 +33,7 @@ function sourceLabel(url: string | undefined): string | null {
 function gmailComposeUrl(job: Job): string | null {
   if (!job.email) return null;
 
-  const via = sourceLabel(job.sourceUrl);
+  const via = sourceLabel(jobSourceUrl(job));
   const subject = `Application for ${job.title} - [Your Name]`;
   const body = [
     `Dear Hiring Team at ${job.company},`,
@@ -99,7 +99,11 @@ export function JobDetailModal({ match, onClose }: JobDetailModalProps) {
 
   const job = shown?.job;
   const gmailUrl = job ? gmailComposeUrl(job) : null;
-  const via = sourceLabel(job?.sourceUrl);
+  // Never the raw sourceUrl: a seeded row can carry a dead /jobs/<slug> path,
+  // and a posting may carry no link at all. Both fall back to a live Myanmar
+  // search rather than a 404 or a missing button.
+  const sourceUrl = job ? jobSourceUrl(job) : null;
+  const via = sourceLabel(sourceUrl ?? undefined);
 
   return (
     <dialog
@@ -233,16 +237,18 @@ export function JobDetailModal({ match, onClose }: JobDetailModalProps) {
                   <ExternalIcon />
                 </a>
               )}
-              {job.sourceUrl && (
+              {sourceUrl && (
                 <a
-                  href={job.sourceUrl}
+                  href={sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`flex items-center justify-center gap-2 rounded-lg border border-line px-4 py-2.5 text-sm font-medium transition-colors hover:border-line-strong ${
                     gmailUrl ? "" : "flex-1"
                   }`}
                 >
-                  {via ? `View on ${via}` : "View original post"}
+                  {isSearchLink(sourceUrl)
+                    ? `Find similar roles${via ? ` on ${via}` : ""}`
+                    : `View on ${via ?? "original post"}`}
                   <ExternalIcon />
                 </a>
               )}
@@ -254,11 +260,12 @@ export function JobDetailModal({ match, onClose }: JobDetailModalProps) {
                 replace the bracketed placeholders before sending.
               </p>
             ) : (
-              !job.sourceUrl && (
-                <p className="text-center text-sm text-muted">
-                  This posting has no contact address or application link.
-                </p>
-              )
+              // jobSourceUrl() always returns something, so there is always a
+              // button — but with no address to apply to, say what it does.
+              <p className="text-center text-sm text-muted">
+                No contact address on this posting. The link opens current
+                openings for this kind of role.
+              </p>
             )}
           </footer>
         </div>

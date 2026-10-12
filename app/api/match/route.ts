@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeSourceUrl, type Job, type JobLevel } from "@/lib/jobs";
+import { jobSourceUrl, type Job, type JobLevel } from "@/lib/jobs";
 import { logSearch } from "@/lib/analytics";
 import { EmbeddingError, MAX_EMBED_CHARS, embedText } from "@/lib/embeddings";
 import {
@@ -45,7 +45,7 @@ function asLevel(value: string | null | undefined): JobLevel | undefined {
 }
 
 function toJob(row: MatchJobsRow): Job {
-  return {
+  const job: Job = {
     id: String(row.id),
     title: row.title,
     company: row.company ?? "Unlisted company",
@@ -53,15 +53,18 @@ function toJob(row: MatchJobsRow): Job {
     description: row.description ?? "",
     mustHave: row.must_haves ?? [],
     niceToHave: row.nice_to_haves ?? [],
-    // Normalized here, not just at seed time, so the rows already in Supabase
-    // stop pointing at 404s without anyone rerunning the seed.
-    sourceUrl: normalizeSourceUrl(row.source_url),
+    // Resolved here, not just at seed time, so rows already in Supabase stop
+    // pointing at 404s without anyone rerunning the seed. jobSourceUrl needs
+    // the title, so it's applied below once the rest of the job exists.
+    sourceUrl: row.source_url ?? undefined,
     email: row.email ?? undefined,
     postedAt: row.created_at ?? undefined,
     employment: row.employment ?? undefined,
     level: asLevel(row.level),
     salary: row.salary ?? undefined,
   };
+
+  return { ...job, sourceUrl: jobSourceUrl(job) };
 }
 
 export async function POST(request: Request) {

@@ -1,0 +1,66 @@
+name: Daily job sync
+
+# Pulls live Tech Career MM postings into Supabase.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   NEXT_PUBLIC_SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY
+#   GEMINI_API_KEY
+
+on:
+  schedule:
+    # 00:00 UTC — 06:30 in Myanmar (UTC+6:30), so the listing is fresh for the
+    # working day. GitHub runs scheduled jobs late under load; this is not a
+    # guaranteed time.
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Postings to sync"
+        required: false
+        default: "40"
+      pages:
+        description: "API pages to scan (100 articles each)"
+        required: false
+        default: "5"
+      # Underscore, not a hyphen: `inputs.dry-run` parses as subtraction in a
+      # ${{ }} expression and silently evaluates to 0.
+      dry_run:
+        description: "Parse and report without writing"
+        type: boolean
+        required: false
+        default: false
+
+# A long sync and the next day's run must not write at the same time.
+concurrency:
+  group: job-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # The scripts rely on Node's native TypeScript stripping, so no tsx
+          # or build step is needed.
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync jobs
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          node scripts/sync-techcareer-jobs.ts \
+            --limit "${{ inputs.limit || '40' }}" \
+            --pages "${{ inputs.pages || '5' }}" \
+            ${{ inputs.dry_run && '--dry-run' || '' }}

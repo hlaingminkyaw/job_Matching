@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "seed": "node --env-file=.env.local scripts/seed-jobs.ts"
+    "seed": "node --env-file=.env.local scripts/seed-jobs.ts",
+    "sync": "node --env-file=.env.local scripts/sync-techcareer-jobs.ts",
+    "fetch-jobs": "node --env-file=.env.local scripts/fetch-jobs.ts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
