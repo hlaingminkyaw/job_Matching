@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { jobSourceUrl, type Job, type JobLevel } from "@/lib/jobs";
 import { logSearch } from "@/lib/analytics";
-import { EmbeddingError, MAX_EMBED_CHARS, embedText } from "@/lib/embeddings";
+import {
+  EmbeddingError,
+  MAX_EMBED_CHARS,
+  MAX_EMBED_TOKENS,
+  charsThatFit,
+  countEmbedTokens,
+  embedText,
+} from "@/lib/embeddings";
 import {
   explainMatch,
   keywordScore,
@@ -94,7 +101,30 @@ export async function POST(request: Request) {
     return fail(
       413,
       "resume_too_long",
-      `That resume is ${resume.length.toLocaleString()} characters. Trim it to ${MAX_EMBED_CHARS.toLocaleString()} or fewer — the embedding model takes 2,048 tokens.`,
+      `That resume is ${resume.length.toLocaleString()} characters, which is past anything this can read. Paste the resume itself rather than a whole document.`,
+    );
+  }
+
+  // The real gate. Characters are not a usable stand-in for tokens — the same
+  // length runs anywhere from ~1100 to ~5700 tokens depending on the script —
+  // and embedContent answers an over-long input by silently truncating it, so
+  // nothing downstream would reveal that half a resume went unmatched.
+  let resumeTokens: number;
+  try {
+    resumeTokens = await countEmbedTokens(resume);
+  } catch (error) {
+    console.error("[match] token count failed:", error);
+    return fail(502, "upstream_error", "Could not measure that resume. Try again in a moment.");
+  }
+
+  if (resumeTokens > MAX_EMBED_TOKENS) {
+    // Quoted in characters because that is what the word counter under the
+    // textarea shows; tokens would be a unit nobody can act on.
+    const fits = charsThatFit(resume, resumeTokens, MAX_EMBED_TOKENS);
+    return fail(
+      413,
+      "resume_too_long",
+      `That resume is too long for the embedding model — ${resumeTokens.toLocaleString()} units of ${MAX_EMBED_TOKENS.toLocaleString()}. Trim it to roughly ${fits.toLocaleString()} characters, keeping the parts a hiring manager would read.`,
     );
   }
 

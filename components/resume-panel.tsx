@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import { ResumeUpload } from "./resume-upload";
 
 type ResumePanelProps = {
   value: string;
@@ -55,6 +56,8 @@ export function ResumePanel({
         </div>
       </div>
 
+      <ResumeUpload value={value} disabled={isLoading} onText={onChange} />
+
       <textarea
         id="resume"
         name="resume"
@@ -62,7 +65,7 @@ export function ResumePanel({
         onChange={(event) => onChange(event.target.value)}
         rows={10}
         spellCheck={false}
-        placeholder="Paste your resume here — experience, skills, projects. Plain text is fine."
+        placeholder="…or paste your resume here — experience, skills, projects. Plain text is fine."
         className="mt-3 w-full resize-y rounded-xl border border-line bg-raised px-3.5 py-3 font-mono text-[13px] leading-6 text-fg transition-[border-color,box-shadow] duration-200 placeholder:text-muted/70 focus:border-brand focus:shadow-[0_0_0_3px_var(--brand-ring)] focus:outline-none"
       />
 

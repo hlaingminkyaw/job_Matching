@@ -15,12 +15,25 @@ export const EMBEDDING_MODEL = "gemini-embedding-001";
 /** Must stay in sync with the `vector(768)` column on the jobs table. */
 export const EMBEDDING_DIMENSIONS = 768;
 
+/** The model's real input limit. Everything else here is a proxy for it. */
+export const MAX_EMBED_TOKENS = 2_048;
+
 /**
- * gemini-embedding-001 accepts 2048 input tokens. 6000 characters of dense
- * technical prose lands comfortably under that, with room for the tokenizer to
- * disagree with the estimate.
+ * A cheap pre-filter, not the real limit — countEmbedTokens() is.
+ *
+ * Characters are a poor proxy for tokens: measured against this model, the same
+ * 7500 characters come to 1092 tokens of plain English, 1895 of bullet-point
+ * tech nouns, 3187 when it is mostly URLs, and 5704 of Burmese script. A single
+ * character count cannot be right for all of those, and the old 6000 was wrong
+ * in both directions — it turned away English resumes worth ~1700 tokens while
+ * waving through 6000 characters of Burmese worth 4559.
+ *
+ * Getting that wrong is not loud: embedContent does not reject an over-long
+ * input, it truncates and returns a normal-looking 768-dim vector. The resume
+ * then matches on its opening alone and nothing says so. Hence the real check
+ * on tokens; this bound only keeps absurd payloads out of a counting request.
  */
-export const MAX_EMBED_CHARS = 6_000;
+export const MAX_EMBED_CHARS = 20_000;
 
 /**
  * Asymmetric retrieval: job postings are embedded as documents, resumes as
@@ -91,6 +104,44 @@ function classify(error: unknown): EmbeddingError {
   return new EmbeddingError(`Gemini embedding request failed: ${message}`, "upstream", {
     cause: error,
   });
+}
+
+/**
+ * What the model will actually charge this text against its 2048-token budget.
+ *
+ * The only honest way to answer "will this fit": the tokenizer is the authority
+ * and the ratio moves by a factor of five across scripts. countTokens is a
+ * separate, cheap endpoint — it does not run the model or produce a vector.
+ */
+export async function countEmbedTokens(text: string): Promise<number> {
+  if (!text.trim()) return 0;
+  if (text.length > MAX_EMBED_CHARS) {
+    throw new EmbeddingError(
+      `Input is ${text.length} characters; refusing to count past ${MAX_EMBED_CHARS}.`,
+      "too_long",
+    );
+  }
+  try {
+    const { totalTokens } = await client().models.countTokens({
+      model: EMBEDDING_MODEL,
+      contents: [{ role: "user", parts: [{ text }] }],
+    });
+    return totalTokens ?? 0;
+  } catch (error) {
+    throw classify(error);
+  }
+}
+
+/**
+ * How much of `text` fits in the token budget, as a character count, so a
+ * caller can tell someone what to trim in the units they are looking at.
+ *
+ * Scales by the measured ratio for this particular text rather than assuming
+ * one: that is the whole point, since the ratio is what varies.
+ */
+export function charsThatFit(text: string, tokens: number, budget: number): number {
+  if (tokens <= budget) return text.length;
+  return Math.floor(text.length * (budget / tokens));
 }
 
 /**

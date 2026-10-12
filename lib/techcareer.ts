@@ -15,7 +15,6 @@
  */
 
 import { ALIASES } from "./matching.ts";
-import { MAX_EMBED_CHARS } from "./embeddings.ts";
 import type { Job, JobLevel } from "./jobs.ts";
 
 const API = "https://api.onesiteblog.com/api/blog/article-list";
@@ -28,8 +27,13 @@ export const DEFAULT_SALARY = "Negotiable / Market Rate";
  * Leaves room for the title, company and skill lines jobEmbeddingInput() wraps
  * around the description, so a long posting can't push a request past the
  * model's input limit mid-sync.
+ *
+ * An absolute number rather than MAX_EMBED_CHARS minus a margin: that constant
+ * is now a loose pre-filter (see lib/embeddings.ts) and following it upwards
+ * would quietly start embedding more of each posting than the rows already in
+ * the table were built from, leaving old and new jobs on different footings.
  */
-const MAX_DESCRIPTION_CHARS = MAX_EMBED_CHARS - 1_500;
+const MAX_DESCRIPTION_CHARS = 4_500;
 
 export type Article = {
   id: string;

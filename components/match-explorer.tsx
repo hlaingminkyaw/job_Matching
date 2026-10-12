@@ -144,8 +144,9 @@ export function MatchExplorer() {
 
         {status === "idle" && (
           <Notice title="No matches yet">
-            Paste a resume above and hit <span className="text-fg">Find matching jobs</span> to
-            search the postings in your database.
+            Upload or paste a resume above and hit{" "}
+            <span className="text-fg">Find matching jobs</span> to search the postings in your
+            database.
           </Notice>
         )}
       </section>
