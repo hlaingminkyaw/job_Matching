@@ -23,7 +23,10 @@ export type Job = {
    * someone who never advertised the job.
    */
   email?: string;
-  /** Where "View original post" sends the reader. Placeholder paths. */
+  /**
+   * Where "View original post" sends the reader. Placeholder paths — run them
+   * through normalizeSourceUrl() before rendering a link.
+   */
   sourceUrl?: string;
   /** ISO timestamp. Rendered as "3 days ago" by lib/format.ts at read time. */
   postedAt?: string;
@@ -36,6 +39,48 @@ export type Job = {
   level?: JobLevel;
   salary?: string;
 };
+
+/** Tech Career MM's landing page — the only path safe to guess at. */
+const TECH_CAREER_HOME = "https://techcareerweb.com/home";
+
+/** Real postings live at /article-details/<numeric id>. Nothing else resolves. */
+const TECH_CAREER_ARTICLE = /^\/article-details\/\d+\/?$/;
+
+function isTechCareer(hostname: string): boolean {
+  return hostname === "techcareerweb.com" || hostname.endsWith(".techcareerweb.com");
+}
+
+/**
+ * Keeps "View original post" off dead links.
+ *
+ * The seed URLs below were invented as /jobs/<slug>, a route Tech Career MM
+ * doesn't have — every one of them 404s. Rather than send a job seeker to an
+ * error page, anything that isn't a real /article-details/<id> path is pointed
+ * at the site's home page, where the posting can at least be searched for.
+ *
+ * Applied at read time (app/api/match/route.ts) as well as at seed time, so
+ * rows already sitting in Supabase are corrected without a reseed.
+ *
+ * Swap the placeholders for genuine /article-details/<id> URLs as you collect
+ * them and they'll pass through untouched.
+ */
+export function normalizeSourceUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    // Not a URL at all. No link beats a broken one.
+    return undefined;
+  }
+
+  // Anything else — LinkedIn job searches, company career pages — is already a
+  // working address and passes through as-is.
+  if (!isTechCareer(parsed.hostname)) return url;
+
+  return TECH_CAREER_ARTICLE.test(parsed.pathname) ? url : TECH_CAREER_HOME;
+}
 
 /**
  * Posting dates are relative to whenever the seed runs, so re-seeding always

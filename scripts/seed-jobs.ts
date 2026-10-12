@@ -10,7 +10,7 @@
  * Imports carry explicit .ts extensions because this runs on Node's native
  * type stripping (Node 22.6+), which does not resolve extensionless paths.
  */
-import { JOBS, jobEmbeddingInput } from "../lib/jobs.ts";
+import { JOBS, jobEmbeddingInput, normalizeSourceUrl } from "../lib/jobs.ts";
 import { EMBED_CHUNK_SIZE, EMBEDDING_MODEL, EmbeddingError, embedAll } from "../lib/embeddings.ts";
 import { getSupabaseAdmin } from "../lib/supabase.ts";
 
@@ -63,7 +63,7 @@ async function main() {
           // The posting date. The UI renders it as "3 days ago" at read time
           // rather than storing a string that goes stale.
           created_at: job.postedAt ?? new Date().toISOString(),
-          source_url: job.sourceUrl ?? null,
+          source_url: normalizeSourceUrl(job.sourceUrl) ?? null,
           email: job.email ?? null,
           employment: job.employment ?? null,
           level: job.level ?? null,

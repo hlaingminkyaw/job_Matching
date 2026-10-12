@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import type { Job, JobLevel } from "@/lib/jobs";
+import { normalizeSourceUrl, type Job, type JobLevel } from "@/lib/jobs";
+import { logSearch } from "@/lib/analytics";
 import { EmbeddingError, MAX_EMBED_CHARS, embedText } from "@/lib/embeddings";
 import {
   explainMatch,
@@ -37,10 +38,6 @@ type MatchJobsRow = {
   salary?: string | null;
 };
 
-function fail(status: number, code: string, message: string) {
-  return NextResponse.json({ error: { code, message } }, { status });
-}
-
 const LEVELS: JobLevel[] = ["Junior", "Mid", "Senior", "Staff"];
 
 function asLevel(value: string | null | undefined): JobLevel | undefined {
@@ -56,7 +53,9 @@ function toJob(row: MatchJobsRow): Job {
     description: row.description ?? "",
     mustHave: row.must_haves ?? [],
     niceToHave: row.nice_to_haves ?? [],
-    sourceUrl: row.source_url ?? undefined,
+    // Normalized here, not just at seed time, so the rows already in Supabase
+    // stop pointing at 404s without anyone rerunning the seed.
+    sourceUrl: normalizeSourceUrl(row.source_url),
     email: row.email ?? undefined,
     postedAt: row.created_at ?? undefined,
     employment: row.employment ?? undefined,
@@ -66,6 +65,16 @@ function toJob(row: MatchJobsRow): Job {
 }
 
 export async function POST(request: Request) {
+  // Set as soon as the resume is read, so a failure logged below still records
+  // how long the input was.
+  let resumeChars: number | undefined;
+
+  /** Every error response also lands in `searches` with its code. */
+  const fail = (status: number, code: string, message: string) => {
+    logSearch(request, { outcome: "error", errorCode: code, resumeChars });
+    return NextResponse.json({ error: { code, message } }, { status });
+  };
+
   let resume: unknown;
   try {
     const body: unknown = await request.json();
@@ -77,6 +86,7 @@ export async function POST(request: Request) {
   if (typeof resume !== "string" || !resume.trim()) {
     return fail(400, "empty_resume", "Paste a resume before searching.");
   }
+  resumeChars = resume.length;
   if (resume.length > MAX_EMBED_CHARS) {
     return fail(
       413,
@@ -160,6 +170,17 @@ export async function POST(request: Request) {
   });
 
   matches.sort((a, b) => b.score - a.score || a.job.title.localeCompare(b.job.title));
+
+  const best = matches[0];
+  logSearch(request, {
+    // A 200 with nothing in it is the interesting case: the search worked and
+    // still found this person nothing.
+    outcome: matches.length ? "matched" : "no_matches",
+    matchCount: matches.length,
+    topScore: best?.score,
+    topJob: best && `${best.job.title} — ${best.job.company}`,
+    resumeChars,
+  });
 
   return NextResponse.json({ matches, threshold: MATCH_THRESHOLD });
 }
