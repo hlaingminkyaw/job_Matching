@@ -1,6 +1,10 @@
-name: Daily job sync
+name: Manual job sync
 
-# Pulls live Tech Career MM postings into Supabase.
+# Pulls live Tech Career MM postings into Supabase, on demand.
+#
+# The daily run is a Vercel Cron (vercel.json → /api/cron/sync-jobs). This
+# workflow has no schedule so the two never both run: each run spends Gemini
+# quota and sends Telegram alerts.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
 #   NEXT_PUBLIC_SUPABASE_URL
@@ -8,11 +12,6 @@ name: Daily job sync
 #   GEMINI_API_KEY
 
 on:
-  schedule:
-    # 00:00 UTC — 06:30 in Myanmar (UTC+6:30), so the listing is fresh for the
-    # working day. GitHub runs scheduled jobs late under load; this is not a
-    # guaranteed time.
-    - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
       limit:

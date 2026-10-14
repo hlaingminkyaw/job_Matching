@@ -3,26 +3,43 @@
 -- Run this in the Supabase SQL editor before the first sync. Without it,
 -- `upsert(..., { onConflict: "source_url" })` fails with 42P10: there is no
 -- unique index for ON CONFLICT to resolve against.
+--
+-- Safe to re-run, including on a database that ran the earlier version of this
+-- file (which created a partial index the upsert could never use).
 
 -- 1. Existing rows must not collide, or the constraint can't be created.
---    The seeded fictional rows all carried distinct URLs, but a half-finished
---    sync could have left duplicates. Keep the newest row for each URL.
+--    Keep the newest row for each URL; ctid breaks ties between rows that
+--    share a created_at.
 delete from jobs a
 using jobs b
 where a.source_url is not null
   and a.source_url = b.source_url
-  and a.created_at < b.created_at;
+  and (a.created_at < b.created_at
+       or (a.created_at = b.created_at and a.ctid < b.ctid));
 
--- 2. A partial unique index rather than a table constraint: Postgres treats
---    NULLs as distinct, so several rows may legitimately have no source_url,
---    and this keeps them out of the uniqueness check entirely.
-create unique index if not exists jobs_source_url_key
-  on jobs (source_url)
-  where source_url is not null;
+-- 2. Drop the partial index an earlier version of this file created.
+--    ON CONFLICT (source_url) cannot infer a partial index unless the statement
+--    repeats its WHERE predicate, and PostgREST has no way to send one — so the
+--    upsert kept failing with 42P10 even with that index in place.
+--    Only the partial one: a constraint of the same name owns a plain index
+--    that can't be dropped directly, and is exactly what step 3 wants.
+--
+-- 3. A plain unique constraint. Postgres treats NULLs as distinct, so rows
+--    without a source_url are still allowed side by side.
+do $$
+begin
+  if exists (
+    select 1 from pg_index
+    where indexrelid = to_regclass('jobs_source_url_key')
+      and indpred is not null
+  ) then
+    drop index jobs_source_url_key;
+  end if;
 
--- Supabase's PostgREST resolves `onConflict: "source_url"` against this index.
---
--- If you would rather have a named table constraint, and every row is
--- guaranteed to carry a source_url, use this instead:
---
---   alter table jobs add constraint unique_source_url unique (source_url);
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'jobs_source_url_key' and conrelid = 'jobs'::regclass
+  ) then
+    alter table jobs add constraint jobs_source_url_key unique (source_url);
+  end if;
+end $$;
