@@ -126,7 +126,10 @@ function scanMessage(detail?: string): string {
 
 function ocrFailureMessage(error: unknown): string {
   if (error instanceof OcrError) {
-    if (error.kind === "rate_limit" || error.kind === "unavailable") {
+    if (error.kind === "unavailable") {
+      return scanMessage("The OCR service is overloaded right now — try again in a minute, or paste the text instead.");
+    }
+    if (error.kind === "rate_limit") {
       return scanMessage("Reading it with OCR is rate-limited right now — try again in a moment, or paste the text instead.");
     }
     if (error.kind === "blocked") {

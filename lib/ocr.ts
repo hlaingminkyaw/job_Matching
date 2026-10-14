@@ -25,6 +25,15 @@ import { GoogleGenAI } from "@google/genai";
 export const OCR_MODEL = "gemini-3.5-flash";
 
 /**
+ * Where OCR goes when OCR_MODEL is busy or rate-limited. A different model has
+ * its own capacity pool, so it often answers while the primary is returning
+ * 503 "high demand" — as it was on 2026-10-14, when gemini-3.5-flash and
+ * gemini-flash-latest both 503'd and this one answered in about a second.
+ * Slower than the primary on a resume (12.7s against 5.0s) but the same output.
+ */
+export const OCR_FALLBACK_MODEL = "gemini-3.1-flash-lite";
+
+/**
  * Transcription needs no deliberation, and Gemini 3.x thinks by default:
  * measured 22.3s with thinking against 5.1s without, for byte-identical output
  * (681 thought tokens spent on reading a one-page resume).
@@ -113,9 +122,9 @@ function classify(error: unknown): OcrError {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function callGemini(base64: string): Promise<OcrResult> {
+async function callGemini(model: string, base64: string): Promise<OcrResult> {
   const response = await client().models.generateContent({
-    model: OCR_MODEL,
+    model,
     contents: [
       {
         role: "user",
@@ -153,22 +162,38 @@ async function callGemini(base64: string): Promise<OcrResult> {
 }
 
 /**
- * Transcribe a PDF that pdf-parse could not read. Retries once on the two
- * failures that are purely about timing — a busy model and a rate limit.
+ * Primary, then the fallback straight away (a different capacity pool, so no
+ * point waiting first), then the fallback once more after a pause. Busy and
+ * rate-limited answers come back in about a second, so the whole chain fits
+ * well inside the route's 60s.
+ */
+const ATTEMPTS: { model: string; delayMs: number }[] = [
+  { model: OCR_MODEL, delayMs: 0 },
+  { model: OCR_FALLBACK_MODEL, delayMs: 0 },
+  { model: OCR_FALLBACK_MODEL, delayMs: 1_500 },
+];
+
+/**
+ * Transcribe a PDF that pdf-parse could not read. Moves down ATTEMPTS only on
+ * the two failures that are purely about timing — a busy model and a rate
+ * limit. Anything else (a bad key, a blocked document) throws immediately.
  *
  * Throws OcrError; the caller decides whether to surface it or fall back.
  */
 export async function ocrPdf(bytes: Uint8Array): Promise<OcrResult> {
   const base64 = Buffer.from(bytes).toString("base64");
+  let last: OcrError | undefined;
 
-  for (let attempt = 1; ; attempt++) {
+  for (const { model, delayMs } of ATTEMPTS) {
+    if (delayMs) await sleep(delayMs);
     try {
-      return await callGemini(base64);
+      return await callGemini(model, base64);
     } catch (error) {
-      const ocrError = classify(error);
-      const retryable = ocrError.kind === "rate_limit" || ocrError.kind === "unavailable";
-      if (!retryable || attempt >= 2) throw ocrError;
-      await sleep(1_500);
+      last = classify(error);
+      if (last.kind !== "rate_limit" && last.kind !== "unavailable") throw last;
+      console.warn(`[ocr] ${model}: ${last.message} Trying the next model.`);
     }
   }
+
+  throw last!;
 }
